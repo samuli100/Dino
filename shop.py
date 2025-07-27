@@ -1,8 +1,5 @@
 import pygame
-from constants import BLACK, GRAY, WHITE, WIDTH, GROUND_Y, BLOCK_SIZE, GREEN
-from utils import draw_pixel_art
-from constants import DINO_FRAMES
-from constants import GROUND_Y, BLOCK_SIZE
+from constants import BLACK, GRAY, WHITE, GREEN
 
 
 class ShopItem:
@@ -26,6 +23,7 @@ class ShopItem:
     def is_maxed(self, current_level):
         """Check if item is at max level"""
         return current_level >= self.max_level
+
 
 class Shop:
     """Shop system for upgrades"""
@@ -67,7 +65,7 @@ class Shop:
         self.save_system.save_data()
         return True
 
-    def handle_input(self, event):
+    def handle_event(self, event):
         """Handle shop input events"""
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE or event.key == pygame.K_m:
@@ -77,7 +75,7 @@ class Shop:
                 item_names = list(self.items.keys())
                 if item_index < len(item_names):
                     self.try_buy_upgrade(item_names[item_index])
-        return "shop"
+        return None
 
     def draw(self, win):
         """Draw the shop interface"""
@@ -88,7 +86,7 @@ class Shop:
         win.blit(title, (50, 30))
         
         # Instructions
-        instructions = self.small_font.render("Press number keys (1-5) to buy, M to return to menu", True, BLACK)
+        instructions = self.small_font.render("Press number keys (1-5) to buy, M or ESC to return to menu", True, BLACK)
         win.blit(instructions, (50, 70))
         
         # Draw items

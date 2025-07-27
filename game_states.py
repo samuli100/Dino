@@ -1,10 +1,8 @@
 import pygame
-from constants import BLACK, BLUE, GOLD, GRAY, HEIGHT, RED, WHITE, WIDTH, GROUND_Y, BLOCK_SIZE, GREEN
+from constants import BLACK, BLUE, GOLD, GRAY, GREEN, HEIGHT, RED, WHITE, WIDTH, GROUND_Y
 from obstacle import ObstacleManager
 from player import Player
-from utils import draw_pixel_art
-from game_states import GameState, MenuState, GameState_Playing, GameOverState
- 
+
 
 class GameState:
     """Base class for game states"""
@@ -16,15 +14,16 @@ class GameState:
 
     def handle_event(self, event):
         """Handle events - to be overridden"""
-        pass
+        return None
 
     def update(self):
         """Update state - to be overridden"""
-        pass
+        return None
 
     def draw(self, win):
         """Draw state - to be overridden"""
         pass
+
 
 class MenuState(GameState):
     """Main menu state"""
@@ -35,7 +34,7 @@ class MenuState(GameState):
                 return "game"
             elif event.key == pygame.K_s:
                 return "shop"
-        return "menu"
+        return None
 
     def draw(self, win):
         win.fill(WHITE)
@@ -58,6 +57,7 @@ class MenuState(GameState):
                 rendered = self.small_font.render(text, True, BLACK)
                 win.blit(rendered, (WIDTH//2 - rendered.get_width()//2, 200 + i * 30))
 
+
 class GameState_Playing(GameState):
     """Main gameplay state"""
     
@@ -77,7 +77,7 @@ class GameState_Playing(GameState):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 return "menu"
-        return "game"
+        return None
 
     def update(self):
         upgrades = self.game_manager.save_system.data["upgrades"]
@@ -102,7 +102,7 @@ class GameState_Playing(GameState):
         if self.obstacle_manager.check_collisions(self.player):
             return "game_over"
             
-        return "game"
+        return None
 
     def draw(self, win):
         win.fill(WHITE)
@@ -138,6 +138,7 @@ class GameState_Playing(GameState):
             shield_text = self.small_font.render("Shield: Ready (Press S)", True, BLUE)
             win.blit(shield_text, (20, 50))
 
+
 class GameOverState(GameState):
     """Game over state"""
     
@@ -156,7 +157,7 @@ class GameOverState(GameState):
                 return "menu"
             elif event.key == pygame.K_ESCAPE:
                 return "quit"
-        return "game_over"
+        return None
 
     def draw(self, win):
         win.fill(WHITE)

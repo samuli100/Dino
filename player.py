@@ -1,10 +1,7 @@
 import pygame
-from constants import BLACK, WIDTH, GROUND_Y, BLOCK_SIZE, DINO_FRAMES, BLUE
+from constants import BLACK, BLUE, GROUND_Y, BLOCK_SIZE, DINO_FRAMES
 from utils import draw_pixel_art
-from constants import DINO_FRAMES
-from constants import GROUND_Y, BLOCK_SIZE
-from constants import DINO_FRAMES
-from constants import GROUND_Y, BLOCK_SIZE, BLUE
+
 
 class Player:
     """Player character with movement, animation, and abilities"""

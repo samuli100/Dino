@@ -1,14 +1,10 @@
 import sys
-
 import pygame
 from constants import WIDTH, HEIGHT, FPS
 from game_states import MenuState, GameState_Playing, GameOverState
 from save_system import SaveSystem
 from shop import Shop
-from utils import draw_pixel_art
-from player import Player
-from game_manager import GameManager
-from obstacle import Obstacle
+
 
 class GameManager:
     """Main game manager that handles states and flow"""
@@ -64,6 +60,7 @@ class GameManager:
                 if event.type == pygame.QUIT:
                     running = False
                 else:
+                    # Let the current state handle the event
                     result = current_state.handle_event(event)
                     if result and result != self.current_state_name:
                         if result == "quit":
@@ -71,7 +68,7 @@ class GameManager:
                         else:
                             self.change_state(result)
             
-            # Update current state
+            # Update current state (if it has an update method)
             if hasattr(current_state, 'update'):
                 result = current_state.update()
                 if result and result != self.current_state_name:
@@ -79,7 +76,7 @@ class GameManager:
             
             # Draw current state
             current_state.draw(self.win)
-            pygame.display.update()
+            pygame.display.flip()
         
         pygame.quit()
         sys.exit()
