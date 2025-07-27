@@ -1,7 +1,9 @@
 import pygame
-from constants import BLACK, BLUE, GOLD, GRAY, GREEN, HEIGHT, RED, WHITE, WIDTH, GROUND_Y
+from constants import (UI_TEXT, UI_ACCENT, GRAY, DARK_GRAY, HEIGHT, WHITE, WIDTH, GROUND_Y, 
+                      UI_BACKGROUND, MEDIUM_GRAY, LIGHT_GRAY)
 from obstacle import ObstacleManager
 from player import Player
+from background_system import BackgroundManager
 
 
 class GameState:
@@ -9,8 +11,10 @@ class GameState:
     
     def __init__(self, game_manager):
         self.game_manager = game_manager
+        self.title_font = pygame.font.Font(None, 48)
         self.font = pygame.font.Font(None, 36)
         self.small_font = pygame.font.Font(None, 24)
+        self.tiny_font = pygame.font.Font(None, 20)
 
     def handle_event(self, event):
         """Handle events - to be overridden"""
@@ -28,6 +32,15 @@ class GameState:
 class MenuState(GameState):
     """Main menu state"""
     
+    def __init__(self, game_manager):
+        super().__init__(game_manager)
+        self.background = BackgroundManager()
+    
+    def update(self):
+        """Update menu background"""
+        self.background.update()
+        return None
+    
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
@@ -37,25 +50,72 @@ class MenuState(GameState):
         return None
 
     def draw(self, win):
+        # Sky gradient background
         win.fill(WHITE)
         
-        # Title
-        title = self.font.render("CHROME DINO - ENHANCED", True, BLACK)
-        win.blit(title, (WIDTH//2 - title.get_width()//2, 100))
+        # Draw background elements
+        self.background.draw(win)
         
-        # Instructions and stats
-        instructions = [
-            "Press SPACE to Start Game",
-            "Press S to Enter Shop",
-            "",
-            f"Coins: {self.game_manager.save_system.data['coins']}",
-            f"High Score: {self.game_manager.save_system.data['high_score']}"
+        # Draw ground
+        pygame.draw.line(win, MEDIUM_GRAY, (0, GROUND_Y), (WIDTH, GROUND_Y), 2)
+        
+        # Main title box
+        title_box_width = 600
+        title_box_height = 200
+        title_box_x = (WIDTH - title_box_width) // 2
+        title_box_y = 80
+        
+        # Title background
+        pygame.draw.rect(win, WHITE, (title_box_x, title_box_y, title_box_width, title_box_height))
+        pygame.draw.rect(win, GRAY, (title_box_x, title_box_y, title_box_width, title_box_height), 3)
+        
+        # Game title
+        title = self.title_font.render("CHROME DINO", True, UI_TEXT)
+        subtitle = self.font.render("Enhanced Edition", True, UI_ACCENT)
+        
+        title_rect = title.get_rect(center=(WIDTH//2, title_box_y + 50))
+        subtitle_rect = subtitle.get_rect(center=(WIDTH//2, title_box_y + 90))
+        
+        win.blit(title, title_rect)
+        win.blit(subtitle, subtitle_rect)
+        
+        # Controls
+        controls = [
+            ("SPACE", "Start Game"),
+            ("S", "Shop")
         ]
         
-        for i, text in enumerate(instructions):
-            if text:
-                rendered = self.small_font.render(text, True, BLACK)
-                win.blit(rendered, (WIDTH//2 - rendered.get_width()//2, 200 + i * 30))
+        y_offset = title_box_y + 130
+        for key, action in controls:
+            key_text = self.small_font.render(f"[{key}]", True, DARK_GRAY)
+            action_text = self.small_font.render(action, True, UI_TEXT)
+            
+            key_width = key_text.get_width()
+            total_width = key_width + 10 + action_text.get_width()
+            start_x = (WIDTH - total_width) // 2
+            
+            win.blit(key_text, (start_x, y_offset))
+            win.blit(action_text, (start_x + key_width + 10, y_offset))
+            y_offset += 25
+        
+        # Stats box
+        stats_box_width = 400
+        stats_box_height = 100
+        stats_box_x = (WIDTH - stats_box_width) // 2
+        stats_box_y = 300
+        
+        pygame.draw.rect(win, UI_BACKGROUND, (stats_box_x, stats_box_y, stats_box_width, stats_box_height))
+        pygame.draw.rect(win, GRAY, (stats_box_x, stats_box_y, stats_box_width, stats_box_height), 2)
+        
+        # Stats
+        coins_text = f"Coins: {self.game_manager.save_system.data['coins']}"
+        score_text = f"High Score: {self.game_manager.save_system.data['high_score']}"
+        
+        coins_surface = self.small_font.render(coins_text, True, UI_ACCENT)
+        score_surface = self.small_font.render(score_text, True, UI_TEXT)
+        
+        win.blit(coins_surface, (stats_box_x + 20, stats_box_y + 25))
+        win.blit(score_surface, (stats_box_x + 20, stats_box_y + 50))
 
 
 class GameState_Playing(GameState):
@@ -63,6 +123,7 @@ class GameState_Playing(GameState):
     
     def __init__(self, game_manager):
         super().__init__(game_manager)
+        self.background = BackgroundManager()
         self.reset_game()
 
     def reset_game(self):
@@ -70,6 +131,7 @@ class GameState_Playing(GameState):
         upgrades = self.game_manager.save_system.data["upgrades"]
         self.player = Player(upgrades)
         self.obstacle_manager = ObstacleManager()
+        self.background.reset()
         self.score = 0
         self.coins_this_run = 0
 
@@ -81,6 +143,9 @@ class GameState_Playing(GameState):
 
     def update(self):
         upgrades = self.game_manager.save_system.data["upgrades"]
+        
+        # Update background
+        self.background.update()
         
         # Update player
         self.player.update(upgrades)
@@ -105,10 +170,14 @@ class GameState_Playing(GameState):
         return None
 
     def draw(self, win):
+        # Sky background
         win.fill(WHITE)
         
-        # Draw ground
-        pygame.draw.line(win, GRAY, (0, GROUND_Y), (WIDTH, GROUND_Y), 2)
+        # Draw background elements
+        self.background.draw(win)
+        
+        # Draw ground line
+        pygame.draw.line(win, MEDIUM_GRAY, (0, GROUND_Y), (WIDTH, GROUND_Y), 2)
         
         # Draw game objects
         self.player.draw(win)
@@ -119,24 +188,34 @@ class GameState_Playing(GameState):
 
     def draw_hud(self, win):
         """Draw heads-up display"""
+        # HUD background panel
+        hud_height = 80
+        pygame.draw.rect(win, UI_BACKGROUND, (0, 0, WIDTH, hud_height))
+        pygame.draw.line(win, GRAY, (0, hud_height), (WIDTH, hud_height), 1)
+        
         # Score
-        score_text = self.font.render(f"Score: {self.score}", True, BLACK)
-        win.blit(score_text, (WIDTH - score_text.get_width() - 20, 20))
+        score_text = self.font.render(f"Score: {self.score}", True, UI_TEXT)
+        win.blit(score_text, (WIDTH - score_text.get_width() - 20, 15))
         
         # Coins
         coins_text = self.small_font.render(
             f"Coins: {self.game_manager.save_system.data['coins']} (+{self.coins_this_run})", 
-            True, GOLD
+            True, UI_ACCENT
         )
-        win.blit(coins_text, (20, 20))
+        win.blit(coins_text, (20, 15))
         
         # Shield status
         if self.player.shield_cooldown > 0:
-            cooldown_text = self.small_font.render(f"Shield: {self.player.shield_cooldown//60 + 1}s", True, RED)
-            win.blit(cooldown_text, (20, 50))
+            cooldown_seconds = self.player.shield_cooldown // 60 + 1
+            cooldown_text = self.small_font.render(f"Shield: {cooldown_seconds}s cooldown", True, GRAY)
+            win.blit(cooldown_text, (20, 40))
         elif self.game_manager.save_system.data["upgrades"]["shield"] > 0:
-            shield_text = self.small_font.render("Shield: Ready (Press S)", True, BLUE)
-            win.blit(shield_text, (20, 50))
+            shield_text = self.small_font.render("Shield: Ready [S]", True, DARK_GRAY)
+            win.blit(shield_text, (20, 40))
+        
+        # Controls hint
+        controls_text = self.tiny_font.render("SPACE: Jump • S: Shield • ESC: Menu", True, GRAY)
+        win.blit(controls_text, (WIDTH - controls_text.get_width() - 20, 55))
 
 
 class GameOverState(GameState):
@@ -160,21 +239,57 @@ class GameOverState(GameState):
         return None
 
     def draw(self, win):
-        win.fill(WHITE)
+        win.fill(UI_BACKGROUND)
         
-        # Game over text
-        game_over_text = self.font.render(f"Game Over! Score: {self.final_score}", True, BLACK)
-        win.blit(game_over_text, (WIDTH//2 - game_over_text.get_width()//2, HEIGHT//2 - 80))
+        # Game over box
+        box_width = 500
+        box_height = 300
+        box_x = (WIDTH - box_width) // 2
+        box_y = (HEIGHT - box_height) // 2
+        
+        pygame.draw.rect(win, WHITE, (box_x, box_y, box_width, box_height))
+        pygame.draw.rect(win, GRAY, (box_x, box_y, box_width, box_height), 3)
+        
+        # Game over title
+        if self.new_high_score:
+            title_text = "NEW HIGH SCORE!"
+            title_color = DARK_GRAY
+        else:
+            title_text = "GAME OVER"
+            title_color = UI_TEXT
+            
+        title_surface = self.title_font.render(title_text, True, title_color)
+        title_rect = title_surface.get_rect(center=(WIDTH//2, box_y + 50))
+        win.blit(title_surface, title_rect)
+        
+        # Score
+        score_text = f"Final Score: {self.final_score}"
+        score_surface = self.font.render(score_text, True, UI_TEXT)
+        score_rect = score_surface.get_rect(center=(WIDTH//2, box_y + 100))
+        win.blit(score_surface, score_rect)
         
         # Coins earned
-        coins_text = self.small_font.render(f"Coins Earned This Run: {self.coins_earned}", True, GOLD)
-        win.blit(coins_text, (WIDTH//2 - coins_text.get_width()//2, HEIGHT//2 - 40))
+        coins_text = f"Coins Earned: {self.coins_earned}"
+        coins_surface = self.small_font.render(coins_text, True, UI_ACCENT)
+        coins_rect = coins_surface.get_rect(center=(WIDTH//2, box_y + 140))
+        win.blit(coins_surface, coins_rect)
         
-        # New high score indicator
-        if self.new_high_score:
-            high_score_text = self.small_font.render("NEW HIGH SCORE!", True, GREEN)
-            win.blit(high_score_text, (WIDTH//2 - high_score_text.get_width()//2, HEIGHT//2 - 10))
+        # Controls
+        controls = [
+            ("R", "Restart"),
+            ("M", "Menu"),
+            ("ESC", "Quit")
+        ]
         
-        # Instructions
-        restart_text = self.small_font.render("Press R to restart, M for menu, or ESC to quit", True, BLACK)
-        win.blit(restart_text, (WIDTH//2 - restart_text.get_width()//2, HEIGHT//2 + 20))
+        y_offset = box_y + 190
+        for key, action in controls:
+            key_text = self.small_font.render(f"[{key}]", True, DARK_GRAY)
+            action_text = self.small_font.render(action, True, UI_TEXT)
+            
+            key_width = key_text.get_width()
+            total_width = key_width + 10 + action_text.get_width()
+            start_x = (WIDTH - total_width) // 2
+            
+            win.blit(key_text, (start_x, y_offset))
+            win.blit(action_text, (start_x + key_width + 10, y_offset))
+            y_offset += 25

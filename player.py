@@ -1,5 +1,5 @@
 import pygame
-from constants import BLACK, BLUE, GROUND_Y, BLOCK_SIZE, DINO_FRAMES
+from constants import VERY_DARK, DARK_GRAY, GROUND_Y, BLOCK_SIZE, DINO_FRAMES, SHIELD_PATTERNS
 from utils import draw_pixel_art
 
 
@@ -28,6 +28,7 @@ class Player:
         self.shield_active = False
         self.shield_duration = 0
         self.shield_cooldown = 0
+        self.max_shield_duration = 180  # 3 seconds at 60 FPS
 
     def handle_input(self, keys, upgrades):
         """Handle player input"""
@@ -47,8 +48,21 @@ class Player:
 
     def activate_shield(self):
         """Activate shield protection"""
-        self.shield_duration = 180  # 3 seconds at 60 FPS
+        self.shield_duration = self.max_shield_duration
         self.shield_cooldown = 600   # 10 seconds cooldown
+
+    def get_shield_stage(self):
+        """Get the current shield visual stage based on remaining duration"""
+        if not self.shield_active:
+            return -1
+        
+        ratio = self.shield_duration / self.max_shield_duration
+        if ratio > 0.66:
+            return 0  # Intact shield
+        elif ratio > 0.33:
+            return 1  # Slightly cracked
+        else:
+            return 2  # Very cracked
 
     def update(self, upgrades):
         """Update player physics and animation"""
@@ -108,9 +122,14 @@ class Player:
 
     def draw(self, win):
         """Draw the player"""
-        color = BLUE if self.shield_active else BLACK
-        draw_pixel_art(win, DINO_FRAMES[self.anim_frame], self.x, self.y, color)
+        # Draw dino in dark gray
+        draw_pixel_art(win, DINO_FRAMES[self.anim_frame], self.x, self.y, VERY_DARK)
         
-        # Draw shield indicator
+        # Draw shield if active (OVER the dino)
         if self.shield_active:
-            pygame.draw.circle(win, BLUE, (self.x + 32, self.y + 48), 40, 2)
+            shield_stage = self.get_shield_stage()
+            if shield_stage >= 0:
+                # Position shield to cover the dino body
+                shield_x = self.x + 8
+                shield_y = self.y + 15
+                draw_pixel_art(win, SHIELD_PATTERNS[shield_stage], shield_x, shield_y, DARK_GRAY)
