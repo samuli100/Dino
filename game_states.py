@@ -134,6 +134,7 @@ class GameState_Playing(GameState):
         self.background.reset()
         self.score = 0
         self.coins_this_run = 0
+        self.dodge_notification_timer = 0
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
@@ -147,11 +148,11 @@ class GameState_Playing(GameState):
         # Update background
         self.background.update()
         
-        # Update player
-        self.player.update(upgrades)
-        
-        # Update obstacles
+        # Update obstacles first to get current speed
         self.obstacle_manager.update(upgrades)
+        
+        # Update player with current obstacle speed
+        self.player.update(upgrades, self.obstacle_manager.current_speed)
         
         # Award coins for passed obstacles
         passed_obstacles = self.obstacle_manager.count_passed_obstacles()
@@ -163,9 +164,13 @@ class GameState_Playing(GameState):
         # Update score
         self.score += 1
         
-        # Check collisions
-        if self.obstacle_manager.check_collisions(self.player):
+        # Check collisions (returns True if player died)
+        if self.obstacle_manager.check_collisions(self.player, upgrades):
             return "game_over"
+        
+        # Update dodge notification timer
+        if self.dodge_notification_timer > 0:
+            self.dodge_notification_timer -= 1
             
         return None
 
@@ -185,11 +190,19 @@ class GameState_Playing(GameState):
         
         # Draw HUD
         self.draw_hud(win)
+        
+        # Draw dodge notification
+        if self.dodge_notification_timer > 0:
+            dodge_text = self.font.render("LUCKY DODGE!", True, DARK_GRAY)
+            dodge_rect = dodge_text.get_rect(center=(WIDTH//2, HEIGHT//2 - 50))
+            win.blit(dodge_text, dodge_rect)
 
     def draw_hud(self, win):
         """Draw heads-up display"""
+        upgrades = self.game_manager.save_system.data["upgrades"]
+        
         # HUD background panel
-        hud_height = 80
+        hud_height = 100
         pygame.draw.rect(win, UI_BACKGROUND, (0, 0, WIDTH, hud_height))
         pygame.draw.line(win, GRAY, (0, hud_height), (WIDTH, hud_height), 1)
         
@@ -204,18 +217,50 @@ class GameState_Playing(GameState):
         )
         win.blit(coins_text, (20, 15))
         
+        # Health display
+        if upgrades["bonus_health"] > 0:
+            health_text = f"Health: {self.player.current_health}/{self.player.max_health}"
+            health_surface = self.small_font.render(health_text, True, UI_TEXT)
+            win.blit(health_surface, (20, 40))
+        
         # Shield status
         if self.player.shield_cooldown > 0:
             cooldown_seconds = self.player.shield_cooldown // 60 + 1
             cooldown_text = self.small_font.render(f"Shield: {cooldown_seconds}s cooldown", True, GRAY)
-            win.blit(cooldown_text, (20, 40))
-        elif self.game_manager.save_system.data["upgrades"]["shield"] > 0:
+            win.blit(cooldown_text, (20, 65))
+        elif upgrades["shield"] > 0:
             shield_text = self.small_font.render("Shield: Ready [S]", True, DARK_GRAY)
-            win.blit(shield_text, (20, 40))
+            win.blit(shield_text, (20, 65))
+        
+        # Game speed indicator
+        speed_text = f"Speed: {self.obstacle_manager.current_speed:.1f}"
+        speed_surface = self.tiny_font.render(speed_text, True, GRAY)
+        win.blit(speed_surface, (WIDTH - speed_surface.get_width() - 20, 45))
+        
+        # Air abilities status
+        hud_y = 40
+        if upgrades["air_jump"] > 0:
+            air_jump_color = GRAY if self.player.air_jump_used else DARK_GRAY
+            air_jump_text = "Air Jump: Used" if self.player.air_jump_used else "Air Jump: Ready"
+            air_jump_surface = self.tiny_font.render(air_jump_text, True, air_jump_color)
+            win.blit(air_jump_surface, (200, hud_y))
+            hud_y += 15
+            
+        if upgrades["air_dash"] > 0:
+            if (hasattr(self.player, 'returning_to_start') and self.player.returning_to_start):
+                dash_text = "Returning to Position"
+                dash_color = UI_ACCENT
+            else:
+                air_dash_color = GRAY if self.player.air_dash_used else DARK_GRAY
+                dash_text = "Air Dash: Used" if self.player.air_dash_used else "Air Dash: Ready [D]"
+                dash_color = air_dash_color
+            
+            air_dash_surface = self.tiny_font.render(dash_text, True, dash_color)
+            win.blit(air_dash_surface, (200, hud_y))
         
         # Controls hint
-        controls_text = self.tiny_font.render("SPACE: Jump • S: Shield • ESC: Menu", True, GRAY)
-        win.blit(controls_text, (WIDTH - controls_text.get_width() - 20, 55))
+        controls_text = self.tiny_font.render("SPACE: Jump • S: Shield • D: Air Dash • ESC: Menu", True, GRAY)
+        win.blit(controls_text, (WIDTH - controls_text.get_width() - 20, 75))
 
 
 class GameOverState(GameState):

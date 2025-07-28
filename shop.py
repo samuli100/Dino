@@ -37,19 +37,28 @@ class Shop:
         self.small_font = pygame.font.Font(None, 24)
         self.tiny_font = pygame.font.Font(None, 20)
         
-        # Initialize shop items
+        # Initialize shop items with new upgrades
         self.items = {
             "jump_boost": ShopItem("Jump Boost", "Higher jumps for better obstacle clearing", 10, 0, 5),
             "coin_multiplier": ShopItem("Coin Multiplier", "2x coins per cactus passed", 25, 100, 3),
             "speed_boost": ShopItem("Speed Boost", "Faster movement and higher scores", 20, 200, 3),
             "shield": ShopItem("Shield", "Press S for temporary protection", 50, 500, 1),
-            "slow_motion": ShopItem("Slow Motion", "Slower obstacles, easier timing", 75, 750, 4)
+            "slow_motion": ShopItem("Slow Motion", "Slower obstacles, easier timing", 75, 750, 4),
+            "shield_upgrade": ShopItem("Shield Enhance", "Better shield duration and cooldown", 100, 1000, 6),
+            "slow_acceleration": ShopItem("Steady Pace", "Slower game speed increase", 80, 1200, 4),
+            "air_jump": ShopItem("Air Jump", "Small jump while airborne", 120, 1500, 1),
+            "air_dash": ShopItem("Air Dash", "Press D to dash horizontally in air", 150, 2000, 1),
+            "dash_distance": ShopItem("Dash Distance", "Longer air dash distance", 100, 2500, 3),
+            "dodge_chance": ShopItem("Lucky Dodge", "Chance to survive cactus collision", 200, 3000, 5),
+            "bonus_health": ShopItem("Extra Life", "Survive one extra hit", 300, 4000, 2)
         }
         
-        # Tab system
-        self.items_per_tab = 4
+        # Grid-based navigation system
+        self.cols = 2  # 2 columns per tab
+        self.items_per_tab = 4  # 4 items per tab (2x2 grid)
         self.current_tab = 0
-        self.selected_item = 0
+        self.selected_row = 0
+        self.selected_col = 0
         self.tab_transition_offset = 0
         self.transitioning = False
         self.transition_speed = 15
@@ -63,6 +72,54 @@ class Shop:
         start_idx = self.current_tab * self.items_per_tab
         end_idx = start_idx + self.items_per_tab
         return self.item_list[start_idx:end_idx]
+
+    def get_selected_item_index(self):
+        """Get the index of currently selected item within the tab"""
+        return self.selected_row * self.cols + self.selected_col
+
+    def get_selected_item_name(self):
+        """Get the name of currently selected item"""
+        current_items = self.get_current_tab_items()
+        item_index = self.get_selected_item_index()
+        if item_index < len(current_items):
+            return current_items[item_index][0]
+        return None
+
+    def move_selection(self, direction):
+        """Move selection in grid, handling tab transitions"""
+        current_items = self.get_current_tab_items()
+        rows_in_tab = math.ceil(len(current_items) / self.cols)
+        
+        if direction == "up":
+            if self.selected_row > 0:
+                self.selected_row -= 1
+        elif direction == "down":
+            if self.selected_row < rows_in_tab - 1:
+                # Check if there's actually an item at this position
+                test_index = (self.selected_row + 1) * self.cols + self.selected_col
+                if test_index < len(current_items):
+                    self.selected_row += 1
+        elif direction == "left":
+            if self.selected_col > 0:
+                self.selected_col -= 1
+            elif self.current_tab > 0:
+                # Move to previous tab, rightmost column
+                self.start_transition(-1)
+                self.selected_col = self.cols - 1
+        elif direction == "right":
+            if self.selected_col < self.cols - 1:
+                # Check if there's an item at this position
+                test_index = self.selected_row * self.cols + (self.selected_col + 1)
+                if test_index < len(current_items):
+                    self.selected_col += 1
+                elif self.current_tab < self.total_tabs - 1:
+                    # Move to next tab if no item here
+                    self.start_transition(1)
+                    self.selected_col = 0
+            elif self.current_tab < self.total_tabs - 1:
+                # Move to next tab, leftmost column
+                self.start_transition(1)
+                self.selected_col = 0
 
     def try_buy_upgrade(self, upgrade_name):
         """Attempt to buy an upgrade"""
@@ -94,28 +151,25 @@ class Shop:
                 return "menu"
             elif event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
                 # Purchase selected item
-                current_items = self.get_current_tab_items()
-                if self.selected_item < len(current_items):
-                    upgrade_name = current_items[self.selected_item][0]
+                upgrade_name = self.get_selected_item_name()
+                if upgrade_name:
                     self.try_buy_upgrade(upgrade_name)
             elif event.key == pygame.K_UP:
-                self.selected_item = max(0, self.selected_item - 1)
+                self.move_selection("up")
             elif event.key == pygame.K_DOWN:
-                current_items = self.get_current_tab_items()
-                self.selected_item = min(len(current_items) - 1, self.selected_item + 1)
-            elif event.key == pygame.K_LEFT and not self.transitioning:
-                if self.current_tab > 0:
-                    self.start_transition(-1)
-            elif event.key == pygame.K_RIGHT and not self.transitioning:
-                if self.current_tab < self.total_tabs - 1:
-                    self.start_transition(1)
+                self.move_selection("down")
+            elif event.key == pygame.K_LEFT:
+                self.move_selection("left")
+            elif event.key == pygame.K_RIGHT:
+                self.move_selection("right")
         return None
 
     def start_transition(self, direction):
         """Start tab transition animation"""
-        self.transitioning = True
-        self.transition_direction = direction
-        self.tab_transition_offset = 0
+        if not self.transitioning:
+            self.transitioning = True
+            self.transition_direction = direction
+            self.tab_transition_offset = 0
 
     def update(self):
         """Update shop animations"""
@@ -127,7 +181,20 @@ class Shop:
                 self.current_tab = max(0, min(self.total_tabs - 1, self.current_tab))
                 self.transitioning = False
                 self.tab_transition_offset = 0
-                self.selected_item = 0  # Reset selection
+                
+                # Adjust selection to stay within new tab bounds
+                current_items = self.get_current_tab_items()
+                rows_in_tab = math.ceil(len(current_items) / self.cols)
+                self.selected_row = min(self.selected_row, rows_in_tab - 1)
+                
+                # Make sure selected position has an item
+                while (self.selected_row * self.cols + self.selected_col >= len(current_items) and 
+                       (self.selected_row > 0 or self.selected_col > 0)):
+                    if self.selected_col > 0:
+                        self.selected_col -= 1
+                    else:
+                        self.selected_row -= 1
+                        self.selected_col = self.cols - 1
 
     def draw_tab_indicator(self, win):
         """Draw tab indicator dots"""
@@ -232,12 +299,12 @@ class Shop:
             current_level = self.save_system.data["upgrades"][upgrade_name]
             
             # Calculate position (2 columns)
-            col = i % 2
-            row = i // 2
+            col = i % self.cols
+            row = i // self.cols
             x = 50 + col * (card_width + margin_x) + offset_x
             y = start_y + row * (card_height + margin_y)
             
-            is_selected = (i == self.selected_item)
+            is_selected = (row == self.selected_row and col == self.selected_col)
             self.draw_card(win, x, y, card_width, card_height, upgrade_name, item, current_level, is_selected)
 
     def draw(self, win):
@@ -274,7 +341,7 @@ class Shop:
             win.blit(tab_surface, (tab_x, tab_y))
         
         # Instructions
-        instructions = "↑↓ Navigate • ←→ Switch tabs • SPACE Purchase • M/ESC Menu"
+        instructions = "Arrow Keys Navigate • SPACE Purchase • M/ESC Menu"
         inst_surface = self.small_font.render(instructions, True, GRAY)
         inst_x = 50
         inst_y = 85

@@ -35,12 +35,13 @@ class Obstacle:
 class Cactus(Obstacle):
     """Cactus obstacle"""
     
-    def __init__(self, base_speed, slow_motion_level):
+    def __init__(self, speed, slow_motion_level):
         self.pattern = random.choice(CACTUS_PATTERNS)
         x = WIDTH
         y = GROUND_Y - len(self.pattern) * BLOCK_SIZE
-        speed = base_speed - slow_motion_level * 0.5
-        super().__init__(x, y, speed)
+        # Apply slow motion effect
+        final_speed = speed - slow_motion_level * 0.5
+        super().__init__(x, y, final_speed)
 
     def get_width(self):
         """Get cactus width"""
@@ -69,9 +70,22 @@ class ObstacleManager:
         self.obstacles = []
         self.spawn_timer = 0
         self.base_speed = 6
+        self.current_speed = self.base_speed
+        self.game_time = 0  # Track time for speed acceleration
 
     def update(self, upgrades):
         """Update all obstacles"""
+        # Update game time and speed acceleration
+        self.game_time += 1
+        
+        # Speed increases every 5 seconds (300 frames at 60 FPS)
+        # Slow acceleration upgrade reduces this increase
+        acceleration_rate = 0.05 - (upgrades["slow_acceleration"] * 0.01)  # Reduce by 0.01 per level
+        acceleration_rate = max(0.01, acceleration_rate)  # Minimum rate
+        
+        speed_increase = (self.game_time // 300) * acceleration_rate
+        self.current_speed = self.base_speed + speed_increase + upgrades["speed_boost"] * 0.5
+        
         # Update spawn timer
         self.spawn_timer += 1
         
@@ -79,15 +93,21 @@ class ObstacleManager:
         if self.should_spawn():
             self.spawn_obstacle(upgrades)
             
-        # Update existing obstacles
+        # Update existing obstacles with current speed
         for obstacle in self.obstacles[:]:
+            obstacle.speed = self.current_speed - upgrades["slow_motion"] * 0.5
             obstacle.update()
             if obstacle.is_off_screen():
                 self.obstacles.remove(obstacle)
 
     def should_spawn(self):
         """Determine if a new obstacle should spawn"""
-        spawn_interval = random.randint(80, 120)
+        # Spawn rate increases with speed but has minimum and maximum intervals
+        base_interval = 100
+        speed_factor = max(0.5, 1.0 - (self.current_speed - self.base_speed) * 0.1)
+        spawn_interval = int(base_interval * speed_factor)
+        spawn_interval = max(60, min(120, spawn_interval))  # Between 1-2 seconds
+        
         if self.spawn_timer >= spawn_interval:
             self.spawn_timer = 0
             return True
@@ -95,25 +115,28 @@ class ObstacleManager:
 
     def spawn_obstacle(self, upgrades):
         """Spawn a new obstacle"""
-        speed = self.base_speed + upgrades["speed_boost"] * 0.5
-        cactus = Cactus(speed, upgrades["slow_motion"])
+        cactus = Cactus(self.current_speed, upgrades["slow_motion"])
         self.obstacles.append(cactus)
 
-    def check_collisions(self, player):
+    def check_collisions(self, player, upgrades):
         """Check for collisions between player and obstacles"""
-        if player.shield_active:
+        if player.shield_active or player.invulnerable_timer > 0:
             return False
             
         player_rect = player.get_collision_rect()
         
-        for obstacle in self.obstacles:
+        for obstacle in self.obstacles[:]:
             if hasattr(obstacle, 'get_collision_rect'):
                 obs_rect = obstacle.get_collision_rect()
             else:
                 obs_rect = obstacle.get_rect()
                 
             if player_rect.colliderect(obs_rect):
-                return True
+                # Remove the obstacle that was hit
+                self.obstacles.remove(obstacle)
+                
+                # Use player's take_damage method which handles dodge chance and health
+                return player.take_damage(upgrades)
         return False
 
     def count_passed_obstacles(self):
@@ -134,3 +157,5 @@ class ObstacleManager:
         """Reset obstacle manager"""
         self.obstacles.clear()
         self.spawn_timer = 0
+        self.current_speed = self.base_speed
+        self.game_time = 0

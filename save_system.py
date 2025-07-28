@@ -16,7 +16,14 @@ class SaveSystem:
                 "coin_multiplier": 0,
                 "speed_boost": 0,
                 "shield": 0,
-                "slow_motion": 0
+                "slow_motion": 0,
+                "shield_upgrade": 0,
+                "slow_acceleration": 0,
+                "air_jump": 0,
+                "air_dash": 0,
+                "dash_distance": 0,
+                "dodge_chance": 0,
+                "bonus_health": 0
             }
         }
         self.load_save()
@@ -27,6 +34,11 @@ class SaveSystem:
             try:
                 with open(SAVE_FILE, 'r') as f:
                     loaded_data = json.load(f)
+                    # Merge with default data to handle new upgrades
+                    if "upgrades" in loaded_data:
+                        for key in self.data["upgrades"]:
+                            if key not in loaded_data["upgrades"]:
+                                loaded_data["upgrades"][key] = 0
                     self.data.update(loaded_data)
             except Exception as e:
                 print(f"Error loading save: {e}")
