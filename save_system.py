@@ -23,7 +23,8 @@ class SaveSystem:
                 "air_dash": 0,
                 "dash_distance": 0,
                 "dodge_chance": 0,
-                "bonus_health": 0
+                "bonus_health": 0,
+                "score_multiplier": 0  # New score multiplier upgrade
             }
         }
         self.load_save()
@@ -73,3 +74,9 @@ class SaveSystem:
         """Upgrade an item by one level"""
         if upgrade_name in self.data["upgrades"]:
             self.data["upgrades"][upgrade_name] += 1
+
+    def get_score_multiplier(self):
+        """Get the current score multiplier based on upgrade level"""
+        level = self.data["upgrades"]["score_multiplier"]
+        multipliers = [1, 10, 100, 1000]  # Base, Level 1, Level 2, Level 3
+        return multipliers[min(level, len(multipliers) - 1)]

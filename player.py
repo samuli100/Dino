@@ -16,57 +16,6 @@ class Player:
         self.base_gravity = 0.8
         self.base_jump_force = -15
         
-        # Apply upgrades - balanced jump scaling
-        self.gravity = self.base_gravity
-        # Jump boost: 0 upgrades = 1x, 5 upgrades = 1.5x (much more balanced)
-        jump_multiplier = 1.0 + (upgrades["jump_boost"] * 0.1)  # 0.1 per level = 0.5x total increase
-        self.jump_force = self.base_jump_force * jump_multiplier
-        
-        # Air abilities
-        self.air_jump_used = False
-        self.air_dash_used = False
-        self.dash_velocity = 0
-        self.dash_duration = 0
-        self.returning_to_start = False  # New state for post-dash return
-        self.start_x = 100  # Starting position to return to
-        
-        # State
-        self.on_ground = True
-        self.anim_frame = 0
-        self.anim_timer = 0
-        
-        # Health system
-        self.max_health = 1 + upgrades["bonus_health"]
-        self.current_health = self.max_health
-        self.invulnerable_timer = 0  # Invulnerability frames after taking damage
-        
-        # Shield system with upgrades
-        self.shield_active = False
-        self.shield_duration = 0
-        self.shield_cooldown = 0
-        
-        # Base shield values
-        base_duration = 120  # 2 seconds
-        base_cooldown = 900  # 15 seconds
-        
-        # Apply shield upgrades
-        shield_level = upgrades["shield_upgrade"]
-        self.max_shield_duration = base_duration + (shield_level * 30)  # +0.5s per level, max 4.5s
-        self.max_shield_cooldown = base_cooldown - (shield_level * 150)  # -2.5s per level, min 10s
-        self.max_shield_cooldown = max(600, self.max_shield_cooldown)  # Minimum 10 seconds
-
-class Player:
-    """Player character with movement, animation, and abilities"""
-    
-    def __init__(self, upgrades):
-        self.x = 100
-        self.y = GROUND_Y - len(DINO_FRAMES[0]) * BLOCK_SIZE
-        self.vel_y = 0
-        
-        # Base physics values
-        self.base_gravity = 0.8
-        self.base_jump_force = -15
-        
         # Apply upgrades - more conservative jump scaling
         self.gravity = self.base_gravity
         jump_multiplier = 1.0 + (upgrades["jump_boost"] * 0.04)  # 0.05 per level = 0.25x total increase
@@ -77,6 +26,10 @@ class Player:
         self.air_dash_used = False
         self.dash_velocity = 0
         self.dash_duration = 0
+        self.dash_cooldown = 0  # New: 5 second cooldown (300 frames at 60 FPS)
+        self.max_dash_cooldown = 300  # 5 seconds
+        self.returning_to_start = False
+        self.start_x = 100
         
         # State
         self.on_ground = True
@@ -129,9 +82,10 @@ class Player:
             self.shield_cooldown == 0 and not self.shield_active):
             self.activate_shield()
             
-        # Air dash
+        # Air dash with cooldown check
         if (d_pressed and not self.on_ground and 
-            not self.air_dash_used and upgrades["air_dash"] > 0):
+            not self.air_dash_used and upgrades["air_dash"] > 0 and
+            self.dash_cooldown == 0):  # Check cooldown
             self.air_dash(upgrades)
             
         # Update previous key states
@@ -152,12 +106,13 @@ class Player:
         self.air_jump_used = True
 
     def air_dash(self, upgrades):
-        """Horizontal air dash"""
+        """Horizontal air dash with cooldown"""
         base_dash = 12
         dash_bonus = upgrades["dash_distance"] * 3  # 3 units per upgrade
         self.dash_velocity = base_dash + dash_bonus
         self.dash_duration = 15  # Frames
         self.air_dash_used = True
+        self.dash_cooldown = self.max_dash_cooldown  # Start cooldown
 
     def activate_shield(self):
         """Activate shield protection"""
@@ -177,10 +132,14 @@ class Player:
         else:
             return 2  # Very cracked
 
+    def is_dashing(self):
+        """Check if player is currently in dash state (dashing or returning)"""
+        return self.dash_duration > 0 or self.returning_to_start
+
     def take_damage(self, upgrades):
         """Take damage with dodge chance"""
-        if self.invulnerable_timer > 0 or self.shield_active:
-            return False
+        if self.invulnerable_timer > 0 or self.shield_active or self.is_dashing():
+            return False  # No damage during dash
             
         # Check dodge chance
         dodge_level = upgrades["dodge_chance"]
@@ -204,6 +163,7 @@ class Player:
         # Update timers
         self.update_shield()
         self.update_invulnerability()
+        self.update_dash_cooldown()
         self.update_dash(obstacle_speed)
         
         # Physics
@@ -227,6 +187,11 @@ class Player:
         """Update invulnerability frames"""
         if self.invulnerable_timer > 0:
             self.invulnerable_timer -= 1
+
+    def update_dash_cooldown(self):
+        """Update dash cooldown"""
+        if self.dash_cooldown > 0:
+            self.dash_cooldown -= 1
 
     def update_dash(self, obstacle_speed=6):
         """Update air dash and return to start position"""
@@ -320,8 +285,12 @@ class Player:
             # Use normal running animation
             dino_frame = DINO_FRAMES[self.anim_frame]
             
-        # Draw dino in dark gray
-        draw_pixel_art(win, dino_frame, self.x, self.y, VERY_DARK)
+        # Draw dino in dark gray, with special effect during dash
+        if self.is_dashing():
+            # Draw with slight transparency or different color during dash
+            draw_pixel_art(win, dino_frame, self.x, self.y, DARK_GRAY)
+        else:
+            draw_pixel_art(win, dino_frame, self.x, self.y, VERY_DARK)
         
         # Draw shield if active (OVER the dino)
         if self.shield_active:

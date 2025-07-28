@@ -72,6 +72,7 @@ class ObstacleManager:
         self.base_speed = 6
         self.current_speed = self.base_speed
         self.game_time = 0  # Track time for speed acceleration
+        self.obstacles_destroyed_by_dash = 0  # Track destroyed obstacles for feedback
 
     def update(self, upgrades):
         """Update all obstacles"""
@@ -119,7 +120,7 @@ class ObstacleManager:
         self.obstacles.append(cactus)
 
     def check_collisions(self, player, upgrades):
-        """Check for collisions between player and obstacles"""
+        """Check for collisions between player and obstacles with dash destruction"""
         if player.shield_active or player.invulnerable_timer > 0:
             return False
             
@@ -132,7 +133,13 @@ class ObstacleManager:
                 obs_rect = obstacle.get_rect()
                 
             if player_rect.colliderect(obs_rect):
-                # Remove the obstacle that was hit
+                # Check if player is dashing - if so, destroy obstacle without damage
+                if player.is_dashing():
+                    self.obstacles.remove(obstacle)
+                    self.obstacles_destroyed_by_dash += 1
+                    return False  # No damage taken
+                
+                # Normal collision - remove obstacle and deal damage
                 self.obstacles.remove(obstacle)
                 
                 # Use player's take_damage method which handles dodge chance and health
@@ -148,6 +155,12 @@ class ObstacleManager:
                 passed_count += 1
         return passed_count
 
+    def get_destroyed_count(self):
+        """Get count of obstacles destroyed by dash and reset counter"""
+        count = self.obstacles_destroyed_by_dash
+        self.obstacles_destroyed_by_dash = 0
+        return count
+
     def draw(self, win):
         """Draw all obstacles"""
         for obstacle in self.obstacles:
@@ -159,3 +172,4 @@ class ObstacleManager:
         self.spawn_timer = 0
         self.current_speed = self.base_speed
         self.game_time = 0
+        self.obstacles_destroyed_by_dash = 0

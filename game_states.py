@@ -49,6 +49,15 @@ class MenuState(GameState):
                 return "shop"
         return None
 
+    def format_number(self, num):
+        """Format large numbers with k/M suffixes"""
+        if num >= 1000000:
+            return f"{num/1000000:.1f}M"
+        elif num >= 1000:
+            return f"{num/1000:.1f}k"
+        else:
+            return str(num)
+
     def draw(self, win):
         # Sky gradient background
         win.fill(WHITE)
@@ -61,7 +70,7 @@ class MenuState(GameState):
         
         # Main title box
         title_box_width = 600
-        title_box_height = 200
+        title_box_height = 220
         title_box_x = (WIDTH - title_box_width) // 2
         title_box_y = 80
         
@@ -79,13 +88,21 @@ class MenuState(GameState):
         win.blit(title, title_rect)
         win.blit(subtitle, subtitle_rect)
         
+        # Score multiplier indicator
+        score_mult = self.game_manager.save_system.get_score_multiplier()
+        if score_mult > 1:
+            mult_text = f"{score_mult}x Score Multiplier Active!"
+            mult_surface = self.small_font.render(mult_text, True, DARK_GRAY)
+            mult_rect = mult_surface.get_rect(center=(WIDTH//2, title_box_y + 120))
+            win.blit(mult_surface, mult_rect)
+        
         # Controls
         controls = [
             ("SPACE", "Start Game"),
             ("S", "Shop")
         ]
         
-        y_offset = title_box_y + 130
+        y_offset = title_box_y + 150
         for key, action in controls:
             key_text = self.small_font.render(f"[{key}]", True, DARK_GRAY)
             action_text = self.small_font.render(action, True, UI_TEXT)
@@ -102,14 +119,14 @@ class MenuState(GameState):
         stats_box_width = 400
         stats_box_height = 100
         stats_box_x = (WIDTH - stats_box_width) // 2
-        stats_box_y = 300
+        stats_box_y = 320
         
         pygame.draw.rect(win, UI_BACKGROUND, (stats_box_x, stats_box_y, stats_box_width, stats_box_height))
         pygame.draw.rect(win, GRAY, (stats_box_x, stats_box_y, stats_box_width, stats_box_height), 2)
         
         # Stats
-        coins_text = f"Coins: {self.game_manager.save_system.data['coins']}"
-        score_text = f"High Score: {self.game_manager.save_system.data['high_score']}"
+        coins_text = f"Coins: {self.format_number(self.game_manager.save_system.data['coins'])}"
+        score_text = f"High Score: {self.format_number(self.game_manager.save_system.data['high_score'])}"
         
         coins_surface = self.small_font.render(coins_text, True, UI_ACCENT)
         score_surface = self.small_font.render(score_text, True, UI_TEXT)
@@ -119,7 +136,7 @@ class MenuState(GameState):
 
 
 class GameState_Playing(GameState):
-    """Main gameplay state"""
+    """Main gameplay state with score multiplier"""
     
     def __init__(self, game_manager):
         super().__init__(game_manager)
@@ -132,7 +149,8 @@ class GameState_Playing(GameState):
         self.player = Player(upgrades)
         self.obstacle_manager = ObstacleManager()
         self.background.reset()
-        self.score = 0
+        self.base_score = 0  # Base score without multiplier
+        self.score = 0  # Final displayed score with multiplier
         self.coins_this_run = 0
         self.dodge_notification_timer = 0
 
@@ -161,8 +179,12 @@ class GameState_Playing(GameState):
             self.coins_this_run += coins_earned
             self.game_manager.save_system.add_coins(coins_earned)
         
-        # Update score
-        self.score += 1
+        # Update base score (always increment by 1)
+        self.base_score += 1
+        
+        # Apply score multiplier to displayed score
+        score_multiplier = self.game_manager.save_system.get_score_multiplier()
+        self.score = self.base_score * score_multiplier
         
         # Check collisions (returns True if player died)
         if self.obstacle_manager.check_collisions(self.player, upgrades):
@@ -173,6 +195,15 @@ class GameState_Playing(GameState):
             self.dodge_notification_timer -= 1
             
         return None
+
+    def format_number(self, num):
+        """Format large numbers with k/M suffixes"""
+        if num >= 1000000:
+            return f"{num/1000000:.1f}M"
+        elif num >= 1000:
+            return f"{num/1000:.1f}k"
+        else:
+            return str(num)
 
     def draw(self, win):
         # Sky background
@@ -198,7 +229,7 @@ class GameState_Playing(GameState):
             win.blit(dodge_text, dodge_rect)
 
     def draw_hud(self, win):
-        """Draw heads-up display"""
+        """Draw heads-up display with score multiplier info"""
         upgrades = self.game_manager.save_system.data["upgrades"]
         
         # HUD background panel
@@ -206,13 +237,19 @@ class GameState_Playing(GameState):
         pygame.draw.rect(win, UI_BACKGROUND, (0, 0, WIDTH, hud_height))
         pygame.draw.line(win, GRAY, (0, hud_height), (WIDTH, hud_height), 1)
         
-        # Score
-        score_text = self.font.render(f"Score: {self.score}", True, UI_TEXT)
-        win.blit(score_text, (WIDTH - score_text.get_width() - 20, 15))
+        # Score with multiplier info
+        score_multiplier = self.game_manager.save_system.get_score_multiplier()
+        if score_multiplier > 1:
+            score_text = f"Score: {self.format_number(self.score)} ({score_multiplier}x)"
+        else:
+            score_text = f"Score: {self.format_number(self.score)}"
+        
+        score_surface = self.font.render(score_text, True, UI_TEXT)
+        win.blit(score_surface, (WIDTH - score_surface.get_width() - 20, 15))
         
         # Coins
         coins_text = self.small_font.render(
-            f"Coins: {self.game_manager.save_system.data['coins']} (+{self.coins_this_run})", 
+            f"Coins: {self.format_number(self.game_manager.save_system.data['coins'])} (+{self.coins_this_run})", 
             True, UI_ACCENT
         )
         win.blit(coins_text, (20, 15))
@@ -247,16 +284,29 @@ class GameState_Playing(GameState):
             hud_y += 15
             
         if upgrades["air_dash"] > 0:
-            if (hasattr(self.player, 'returning_to_start') and self.player.returning_to_start):
+            if self.player.dash_cooldown > 0:
+                cooldown_seconds = (self.player.dash_cooldown // 60) + 1
+                dash_text = f"Air Dash: {cooldown_seconds}s cooldown"
+                dash_color = GRAY
+            elif (hasattr(self.player, 'returning_to_start') and self.player.returning_to_start):
                 dash_text = "Returning to Position"
                 dash_color = UI_ACCENT
+            elif self.player.air_dash_used:
+                dash_text = "Air Dash: Used (land to reset)"
+                dash_color = GRAY
             else:
-                air_dash_color = GRAY if self.player.air_dash_used else DARK_GRAY
-                dash_text = "Air Dash: Used" if self.player.air_dash_used else "Air Dash: Ready [D]"
-                dash_color = air_dash_color
+                dash_text = "Air Dash: Ready [D]"
+                dash_color = DARK_GRAY
             
             air_dash_surface = self.tiny_font.render(dash_text, True, dash_color)
             win.blit(air_dash_surface, (200, hud_y))
+            
+        # Show destroyed obstacles count
+        destroyed_count = self.obstacle_manager.get_destroyed_count()
+        if destroyed_count > 0:
+            destroyed_text = f"Obstacles Destroyed: +{destroyed_count}"
+            destroyed_surface = self.tiny_font.render(destroyed_text, True, UI_ACCENT)
+            win.blit(destroyed_surface, (400, 40))
         
         # Controls hint
         controls_text = self.tiny_font.render("SPACE: Jump • S: Shield • D: Air Dash • ESC: Menu", True, GRAY)
@@ -264,7 +314,7 @@ class GameState_Playing(GameState):
 
 
 class GameOverState(GameState):
-    """Game over state"""
+    """Game over state with formatted numbers"""
     
     def __init__(self, game_manager, final_score, coins_earned):
         super().__init__(game_manager)
@@ -283,12 +333,21 @@ class GameOverState(GameState):
                 return "quit"
         return None
 
+    def format_number(self, num):
+        """Format large numbers with k/M suffixes"""
+        if num >= 1000000:
+            return f"{num/1000000:.1f}M"
+        elif num >= 1000:
+            return f"{num/1000:.1f}k"
+        else:
+            return str(num)
+
     def draw(self, win):
         win.fill(UI_BACKGROUND)
         
         # Game over box
         box_width = 500
-        box_height = 300
+        box_height = 320
         box_x = (WIDTH - box_width) // 2
         box_y = (HEIGHT - box_height) // 2
         
@@ -308,15 +367,23 @@ class GameOverState(GameState):
         win.blit(title_surface, title_rect)
         
         # Score
-        score_text = f"Final Score: {self.final_score}"
+        score_text = f"Final Score: {self.format_number(self.final_score)}"
         score_surface = self.font.render(score_text, True, UI_TEXT)
         score_rect = score_surface.get_rect(center=(WIDTH//2, box_y + 100))
         win.blit(score_surface, score_rect)
         
+        # Score multiplier info
+        score_multiplier = self.game_manager.save_system.get_score_multiplier()
+        if score_multiplier > 1:
+            mult_text = f"({score_multiplier}x Score Multiplier Applied)"
+            mult_surface = self.small_font.render(mult_text, True, UI_ACCENT)
+            mult_rect = mult_surface.get_rect(center=(WIDTH//2, box_y + 125))
+            win.blit(mult_surface, mult_rect)
+        
         # Coins earned
-        coins_text = f"Coins Earned: {self.coins_earned}"
+        coins_text = f"Coins Earned: {self.format_number(self.coins_earned)}"
         coins_surface = self.small_font.render(coins_text, True, UI_ACCENT)
-        coins_rect = coins_surface.get_rect(center=(WIDTH//2, box_y + 140))
+        coins_rect = coins_surface.get_rect(center=(WIDTH//2, box_y + 160))
         win.blit(coins_surface, coins_rect)
         
         # Controls
@@ -326,7 +393,7 @@ class GameOverState(GameState):
             ("ESC", "Quit")
         ]
         
-        y_offset = box_y + 190
+        y_offset = box_y + 210
         for key, action in controls:
             key_text = self.small_font.render(f"[{key}]", True, DARK_GRAY)
             action_text = self.small_font.render(action, True, UI_TEXT)
