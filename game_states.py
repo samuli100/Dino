@@ -64,8 +64,8 @@ class MenuState(GameState):
         pygame.draw.rect(win, WHITE, (title_box_x, title_box_y, title_box_width, title_box_height))
         pygame.draw.rect(win, GRAY, (title_box_x, title_box_y, title_box_width, title_box_height), 3)
         
-        title = self.title_font.render("CHROME DINO", True, UI_TEXT)
-        subtitle = self.font.render("Enhanced Edition", True, UI_ACCENT)
+        title = self.title_font.render("ROGUE DINO", True, UI_TEXT)
+        subtitle = self.font.render("by samuli100", True, UI_ACCENT)
         
         title_rect = title.get_rect(center=(WIDTH//2, title_box_y + 50))
         subtitle_rect = subtitle.get_rect(center=(WIDTH//2, title_box_y + 90))

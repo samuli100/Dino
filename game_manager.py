@@ -10,7 +10,7 @@ class GameManager:
     def __init__(self):
         pygame.init()
         self.win = pygame.display.set_mode((WIDTH, HEIGHT))
-        pygame.display.set_caption("Chrome Dino - Enhanced Edition")
+        pygame.display.set_caption("Rogue Dino")
         self.clock = pygame.time.Clock()
         
         self.save_system = SaveSystem()
