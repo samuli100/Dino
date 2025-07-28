@@ -4,47 +4,21 @@ from constants import (UI_BACKGROUND, UI_BORDER, UI_TEXT, UI_ACCENT, BUTTON_HOVE
                       MEDIUM_GRAY, GRAY, DARK_GRAY, WHITE, LIGHT_GRAY)
 
 
-# Update save_system.py to include score_multiplier
-# In save_system.py, change the default upgrades to:
-"""
-"upgrades": {
-    "jump_boost": 0,
-    "coin_multiplier": 0,
-    "speed_boost": 0,
-    "shield": 0,
-    "slow_motion": 0,
-    "shield_upgrade": 0,
-    "slow_acceleration": 0,
-    "air_jump": 0,
-    "air_dash": 0,
-    "dash_distance": 0,
-    "dodge_chance": 0,
-    "bonus_health": 0,
-    "score_multiplier": 0
-}
-"""
-
-
 class ShopItem:
-    """Represents a shop item with level-specific unlock requirements"""
-    
     def __init__(self, name, description, base_cost, unlock_requirements, max_level):
         self.name = name
         self.description = description
         self.base_cost = base_cost
-        self.unlock_requirements = unlock_requirements  # List of unlock scores for each level
+        self.unlock_requirements = unlock_requirements
         self.max_level = max_level
 
     def get_cost(self, current_level):
-        """Calculate cost based on current level with exponential scaling"""
         if current_level >= self.max_level:
             return 0
-        # More aggressive cost scaling for late game balance
         multiplier = 1.5 + (current_level * 0.3)
         return int(self.base_cost * multiplier)
 
     def is_level_unlocked(self, level, high_score):
-        """Check if a specific level is unlocked"""
         if level == 0:
             return high_score >= self.unlock_requirements[0]
         if level < len(self.unlock_requirements):
@@ -52,14 +26,12 @@ class ShopItem:
         return False
 
     def is_next_level_unlocked(self, current_level, high_score):
-        """Check if the next level can be purchased"""
         next_level = current_level + 1
         if next_level > self.max_level:
             return False
         return self.is_level_unlocked(next_level - 1, high_score)
 
     def get_next_unlock_requirement(self, current_level):
-        """Get the score requirement for the next level"""
         next_level = current_level + 1
         if next_level > self.max_level:
             return None
@@ -68,13 +40,10 @@ class ShopItem:
         return None
 
     def is_maxed(self, current_level):
-        """Check if item is at max level"""
         return current_level >= self.max_level
 
 
 class Shop:
-    """Shop system with balanced progression and score multipliers"""
-    
     def __init__(self, save_system):
         self.save_system = save_system
         self.title_font = pygame.font.Font(None, 48)
@@ -82,111 +51,100 @@ class Shop:
         self.small_font = pygame.font.Font(None, 24)
         self.tiny_font = pygame.font.Font(None, 20)
         
-        # Initialize shop items with balanced progression
         self.items = {
-            # Early game - basic movement
             "jump_boost": ShopItem(
                 "Jump Boost", 
                 "Higher jumps for better obstacle clearing", 
                 10, 
-                [0, 1000, 2000, 5000, 10000],  # 5 levels
+                [0, 1000, 2000, 5000, 10000],
                 5
             ),
             "coin_multiplier": ShopItem(
                 "Coin Multiplier", 
                 "Extra coins per obstacle passed", 
                 25, 
-                [500, 2000, 5000, 15000, 35000, 70000, 120000, 180000, 250000],  # 9 levels up to 10x coins
+                [500, 2000, 5000, 15000, 35000, 70000, 120000, 180000, 250000],
                 9
             ),
             "speed_boost": ShopItem(
                 "Speed Boost", 
                 "Faster movement and higher scores", 
                 20, 
-                [1000, 3000, 7000],  # 3 levels
+                [1000, 3000, 7000],
                 3
             ),
-            
-            # Mid game - defensive abilities
             "shield": ShopItem(
                 "Shield", 
                 "Press S for temporary protection", 
                 50, 
-                [5000],  # 1 level
+                [5000],
                 1
             ),
             "slow_motion": ShopItem(
                 "Slow Motion", 
                 "Slower obstacles, easier timing", 
                 75, 
-                [10000, 15000, 25000, 40000],  # 4 levels
+                [10000, 15000, 25000, 40000],
                 4
             ),
             "shield_upgrade": ShopItem(
                 "Shield Enhance", 
                 "Better shield duration and cooldown", 
                 100, 
-                [15000, 20000, 30000, 50000, 75000, 100000],  # 6 levels
+                [15000, 20000, 30000, 50000, 75000, 100000],
                 6
             ),
             "slow_acceleration": ShopItem(
                 "Steady Pace", 
                 "Slower game speed increase", 
                 80, 
-                [20000, 35000, 60000, 100000],  # 4 levels
+                [20000, 35000, 60000, 100000],
                 4
             ),
-            
-            # Score multiplier - key progression gate
             "score_multiplier": ShopItem(
                 "Score Multiplier", 
                 "10x/100x/1000x points per obstacle!", 
                 500, 
-                [25000, 250000, 2500000],  # 3 levels - major milestones
+                [25000, 250000, 2500000],
                 3
             ),
-            
-            # Advanced movement
             "air_jump": ShopItem(
                 "Air Jump", 
                 "Small jump while airborne", 
                 120, 
-                [50000],  # 1 level
+                [50000],
                 1
             ),
             "air_dash": ShopItem(
                 "Air Dash", 
                 "Press D to dash horizontally in air", 
                 150, 
-                [100000],  # 1 level
+                [100000],
                 1
             ),
             "dash_distance": ShopItem(
                 "Dash Distance", 
                 "Longer air dash distance", 
                 200, 
-                [150000, 300000, 500000],  # 3 levels
+                [150000, 300000, 500000],
                 3
             ),
-            
-            # Late game - survival
             "dodge_chance": ShopItem(
                 "Lucky Dodge", 
                 "Chance to survive cactus collision", 
                 300, 
-                [200000, 400000, 800000, 1600000, 3200000],  # 5 levels
+                [200000, 400000, 800000, 1600000, 3200000],
                 5
             ),
             "bonus_health": ShopItem(
                 "Extra Life", 
                 "Survive one extra hit", 
                 500, 
-                [500000, 5000000],  # 2 levels - very late game
+                [500000, 5000000],
                 2
             )
         }
         
-        # Grid-based navigation system
         self.cols = 2
         self.items_per_tab = 4
         self.current_tab = 0
@@ -196,22 +154,18 @@ class Shop:
         self.transitioning = False
         self.transition_speed = 15
         
-        # Get item lists for tabs
         self.item_list = list(self.items.items())
         self.total_tabs = math.ceil(len(self.item_list) / self.items_per_tab)
 
     def get_current_tab_items(self):
-        """Get items for current tab"""
         start_idx = self.current_tab * self.items_per_tab
         end_idx = start_idx + self.items_per_tab
         return self.item_list[start_idx:end_idx]
 
     def get_selected_item_index(self):
-        """Get the index of currently selected item within the tab"""
         return self.selected_row * self.cols + self.selected_col
 
     def get_selected_item_name(self):
-        """Get the name of currently selected item"""
         current_items = self.get_current_tab_items()
         item_index = self.get_selected_item_index()
         if item_index < len(current_items):
@@ -219,7 +173,6 @@ class Shop:
         return None
 
     def move_selection(self, direction):
-        """Move selection in grid, handling tab transitions"""
         current_items = self.get_current_tab_items()
         rows_in_tab = math.ceil(len(current_items) / self.cols)
         
@@ -250,7 +203,6 @@ class Shop:
                 self.selected_col = 0
 
     def try_buy_upgrade(self, upgrade_name):
-        """Attempt to buy an upgrade with new level-based unlock system"""
         if upgrade_name not in self.items:
             return False
             
@@ -258,26 +210,21 @@ class Shop:
         current_level = self.save_system.data["upgrades"][upgrade_name]
         high_score = self.save_system.data["high_score"]
         
-        # Check if at max level
         if item.is_maxed(current_level):
             return False
             
-        # Check if next level is unlocked
         if not item.is_next_level_unlocked(current_level, high_score):
             return False
             
-        # Check cost
         cost = item.get_cost(current_level)
         if not self.save_system.spend_coins(cost):
             return False
             
-        # Purchase successful
         self.save_system.upgrade_item(upgrade_name)
         self.save_system.save_data()
         return True
 
     def format_number(self, num):
-        """Format large numbers with k/M suffixes"""
         if num >= 1000000:
             return f"{num/1000000:.1f}M"
         elif num >= 1000:
@@ -286,7 +233,6 @@ class Shop:
             return str(num)
 
     def handle_event(self, event):
-        """Handle shop input events"""
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE or event.key == pygame.K_m:
                 return "menu"
@@ -305,14 +251,12 @@ class Shop:
         return None
 
     def start_transition(self, direction):
-        """Start tab transition animation"""
         if not self.transitioning:
             self.transitioning = True
             self.transition_direction = direction
             self.tab_transition_offset = 0
 
     def update(self):
-        """Update shop animations"""
         if self.transitioning:
             self.tab_transition_offset += self.transition_speed * self.transition_direction
             
@@ -335,7 +279,6 @@ class Shop:
                         self.selected_col = self.cols - 1
 
     def draw_tab_indicator(self, win):
-        """Draw tab indicator dots"""
         if self.total_tabs <= 1:
             return
             
@@ -351,11 +294,9 @@ class Shop:
             pygame.draw.circle(win, color, (x, y), dot_size)
 
     def draw_card(self, win, x, y, width, height, item_name, item, current_level, is_selected):
-        """Draw a shop item card with level-based unlock requirements"""
         high_score = self.save_system.data["high_score"]
         is_maxed = item.is_maxed(current_level)
         
-        # Determine if next level is unlocked and affordable
         next_level_unlocked = item.is_next_level_unlocked(current_level, high_score)
         can_afford = True
         
@@ -363,11 +304,9 @@ class Shop:
             cost = item.get_cost(current_level)
             can_afford = self.save_system.data["coins"] >= cost
         
-        # Card selection highlight
         if is_selected:
             pygame.draw.rect(win, UI_ACCENT, (x - 3, y - 3, width + 6, height + 6))
         
-        # Card background based on state
         if not next_level_unlocked and not is_maxed:
             bg_color = LIGHT_GRAY
             border_color = MEDIUM_GRAY
@@ -381,27 +320,22 @@ class Shop:
             bg_color = UI_BACKGROUND
             border_color = UI_BORDER
         
-        # Draw card
         pygame.draw.rect(win, bg_color, (x, y, width, height))
         pygame.draw.rect(win, border_color, (x, y, width, height), 3 if is_selected else 2)
         
-        # Item name
         name_color = GRAY if not next_level_unlocked and not is_maxed else UI_TEXT
         name_text = self.font.render(item.name, True, name_color)
         win.blit(name_text, (x + 15, y + 10))
         
-        # Level indicator
         level_text = f"Level {current_level}/{item.max_level}"
         level_color = DARK_GRAY if is_maxed else UI_ACCENT
         level_surface = self.small_font.render(level_text, True, level_color)
         win.blit(level_surface, (x + 15, y + 35))
         
-        # Description
         desc_color = GRAY if not next_level_unlocked and not is_maxed else UI_TEXT
         desc_surface = self.tiny_font.render(item.description, True, desc_color)
         win.blit(desc_surface, (x + 15, y + 60))
         
-        # Cost or unlock requirement
         if is_maxed:
             status_text = "MAXED OUT"
             status_color = DARK_GRAY
@@ -421,7 +355,6 @@ class Shop:
         status_surface = self.small_font.render(status_text, True, status_color)
         win.blit(status_surface, (x + 15, y + 80))
         
-        # Purchase hint for selected item
         if is_selected and next_level_unlocked and not is_maxed and can_afford:
             hint_text = "[SPACE] to purchase"
             hint_surface = self.tiny_font.render(hint_text, True, UI_ACCENT)
@@ -429,7 +362,6 @@ class Shop:
             hint_y = y + height - hint_surface.get_height() - 5
             win.blit(hint_surface, (hint_x, hint_y))
         
-        # Special indicator for score multiplier
         if item_name == "score_multiplier" and current_level > 0:
             multiplier_values = [10, 100, 1000]
             if current_level <= len(multiplier_values):
@@ -440,7 +372,6 @@ class Shop:
                 win.blit(mult_surface, (mult_x, mult_y))
 
     def draw_tab_content(self, win, offset_x=0):
-        """Draw the current tab's content"""
         current_items = self.get_current_tab_items()
         
         card_width = 350
@@ -461,21 +392,17 @@ class Shop:
             self.draw_card(win, x, y, card_width, card_height, upgrade_name, item, current_level, is_selected)
 
     def draw(self, win):
-        """Draw the shop interface"""
         self.update()
         
         win.fill(UI_BACKGROUND)
         
-        # Header section
         header_height = 120
         pygame.draw.rect(win, WHITE, (0, 0, 800, header_height))
         pygame.draw.line(win, UI_BORDER, (0, header_height), (800, header_height), 2)
         
-        # Title
         title = self.title_font.render("UPGRADE SHOP", True, UI_TEXT)
         win.blit(title, (50, 25))
         
-        # Coins and high score display
         coins_text = f"Coins: {self.format_number(self.save_system.data['coins'])}"
         score_text = f"High Score: {self.format_number(self.save_system.data['high_score'])}"
         
@@ -485,19 +412,16 @@ class Shop:
         win.blit(coins_surface, (800 - coins_surface.get_width() - 50, 25))
         win.blit(score_surface, (800 - score_surface.get_width() - 50, 55))
         
-        # Tab indicator
         if self.total_tabs > 1:
             tab_text = f"Tab {self.current_tab + 1} of {self.total_tabs}"
             tab_surface = self.small_font.render(tab_text, True, GRAY)
             tab_x = 400 - tab_surface.get_width() // 2
             win.blit(tab_surface, (tab_x, 65))
         
-        # Instructions
         instructions = "Arrow Keys Navigate • SPACE Purchase • M/ESC Menu"
         inst_surface = self.small_font.render(instructions, True, GRAY)
         win.blit(inst_surface, (50, 85))
         
-        # Draw tab content with transition
         if self.transitioning:
             self.draw_tab_content(win, -self.tab_transition_offset)
             
@@ -511,5 +435,4 @@ class Shop:
         else:
             self.draw_tab_content(win)
         
-        # Draw tab indicator dots
         self.draw_tab_indicator(win)
