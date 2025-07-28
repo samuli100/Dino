@@ -1,6 +1,6 @@
 import random
 import pygame
-from constants import WIDTH, HEIGHT, GROUND_Y, BLOCK_SIZE, LIGHT_GRAY, MEDIUM_GRAY
+from constants import WIDTH, HEIGHT, GROUND_Y, BLOCK_SIZE, get_color
 from constants import CLOUD_PATTERNS, MOUNTAIN_PATTERNS
 from utils import draw_pixel_art
 
@@ -84,10 +84,10 @@ class BackgroundManager:
 
     def draw(self, win):
         for mountain in self.mountains:
-            mountain.draw(win, MEDIUM_GRAY)
+            mountain.draw(win, get_color("MEDIUM_GRAY"))
         
         for cloud in self.clouds:
-            cloud.draw(win, LIGHT_GRAY)
+            cloud.draw(win, get_color("LIGHT_GRAY"))
 
     def reset(self):
         self.clouds.clear()

@@ -1,7 +1,6 @@
 import pygame
 import math
-from constants import (UI_BACKGROUND, UI_BORDER, UI_TEXT, UI_ACCENT, BUTTON_HOVER, 
-                      MEDIUM_GRAY, GRAY, DARK_GRAY, WHITE, LIGHT_GRAY)
+from constants import get_colors
 
 
 class ShopItem:
@@ -248,6 +247,11 @@ class Shop:
                 self.move_selection("left")
             elif event.key == pygame.K_RIGHT:
                 self.move_selection("right")
+        elif event.type == pygame.MOUSEWHEEL:
+            if event.y > 0:  
+                self.move_selection("up")
+            elif event.y < 0:  
+                self.move_selection("down")
         return None
 
     def start_transition(self, direction):
@@ -281,7 +285,8 @@ class Shop:
     def draw_tab_indicator(self, win):
         if self.total_tabs <= 1:
             return
-            
+        
+        colors = get_colors()
         dot_size = 8
         dot_spacing = 20
         total_width = (self.total_tabs - 1) * dot_spacing
@@ -290,10 +295,11 @@ class Shop:
         
         for i in range(self.total_tabs):
             x = start_x + i * dot_spacing
-            color = UI_ACCENT if i == self.current_tab else LIGHT_GRAY
+            color = colors["UI_ACCENT"] if i == self.current_tab else colors["LIGHT_GRAY"]
             pygame.draw.circle(win, color, (x, y), dot_size)
 
     def draw_card(self, win, x, y, width, height, item_name, item, current_level, is_selected):
+        colors = get_colors()
         high_score = self.save_system.data["high_score"]
         is_maxed = item.is_maxed(current_level)
         
@@ -305,59 +311,59 @@ class Shop:
             can_afford = self.save_system.data["coins"] >= cost
         
         if is_selected:
-            pygame.draw.rect(win, UI_ACCENT, (x - 3, y - 3, width + 6, height + 6))
+            pygame.draw.rect(win, colors["UI_ACCENT"], (x - 3, y - 3, width + 6, height + 6))
         
         if not next_level_unlocked and not is_maxed:
-            bg_color = LIGHT_GRAY
-            border_color = MEDIUM_GRAY
+            bg_color = colors["LIGHT_GRAY"]
+            border_color = colors["MEDIUM_GRAY"]
         elif is_maxed:
-            bg_color = WHITE
-            border_color = DARK_GRAY
+            bg_color = colors["WHITE"]
+            border_color = colors["DARK_GRAY"]
         elif can_afford:
-            bg_color = WHITE
-            border_color = UI_ACCENT if is_selected else GRAY
+            bg_color = colors["WHITE"]
+            border_color = colors["UI_ACCENT"] if is_selected else colors["GRAY"]
         else:
-            bg_color = UI_BACKGROUND
-            border_color = UI_BORDER
+            bg_color = colors["UI_BACKGROUND"]
+            border_color = colors["UI_BORDER"]
         
         pygame.draw.rect(win, bg_color, (x, y, width, height))
         pygame.draw.rect(win, border_color, (x, y, width, height), 3 if is_selected else 2)
         
-        name_color = GRAY if not next_level_unlocked and not is_maxed else UI_TEXT
+        name_color = colors["GRAY"] if not next_level_unlocked and not is_maxed else colors["UI_TEXT"]
         name_text = self.font.render(item.name, True, name_color)
         win.blit(name_text, (x + 15, y + 10))
         
         level_text = f"Level {current_level}/{item.max_level}"
-        level_color = DARK_GRAY if is_maxed else UI_ACCENT
+        level_color = colors["DARK_GRAY"] if is_maxed else colors["UI_ACCENT"]
         level_surface = self.small_font.render(level_text, True, level_color)
         win.blit(level_surface, (x + 15, y + 35))
         
-        desc_color = GRAY if not next_level_unlocked and not is_maxed else UI_TEXT
+        desc_color = colors["GRAY"] if not next_level_unlocked and not is_maxed else colors["UI_TEXT"]
         desc_surface = self.tiny_font.render(item.description, True, desc_color)
         win.blit(desc_surface, (x + 15, y + 60))
         
         if is_maxed:
             status_text = "MAXED OUT"
-            status_color = DARK_GRAY
+            status_color = colors["DARK_GRAY"]
         elif not next_level_unlocked:
             next_unlock = item.get_next_unlock_requirement(current_level)
             if next_unlock:
                 status_text = f"Unlock at {self.format_number(next_unlock)} score"
-                status_color = GRAY
+                status_color = colors["GRAY"]
             else:
                 status_text = "MAX LEVEL"
-                status_color = GRAY
+                status_color = colors["GRAY"]
         else:
             cost = item.get_cost(current_level)
             status_text = f"Cost: {self.format_number(cost)} coins"
-            status_color = UI_ACCENT if can_afford else GRAY
+            status_color = colors["UI_ACCENT"] if can_afford else colors["GRAY"]
         
         status_surface = self.small_font.render(status_text, True, status_color)
         win.blit(status_surface, (x + 15, y + 80))
         
         if is_selected and next_level_unlocked and not is_maxed and can_afford:
             hint_text = "[SPACE] to purchase"
-            hint_surface = self.tiny_font.render(hint_text, True, UI_ACCENT)
+            hint_surface = self.tiny_font.render(hint_text, True, colors["UI_ACCENT"])
             hint_x = x + width - hint_surface.get_width() - 10
             hint_y = y + height - hint_surface.get_height() - 5
             win.blit(hint_surface, (hint_x, hint_y))
@@ -366,7 +372,7 @@ class Shop:
             multiplier_values = [10, 100, 1000]
             if current_level <= len(multiplier_values):
                 mult_text = f"{multiplier_values[current_level-1]}x Score!"
-                mult_surface = self.tiny_font.render(mult_text, True, DARK_GRAY)
+                mult_surface = self.tiny_font.render(mult_text, True, colors["DARK_GRAY"])
                 mult_x = x + width - mult_surface.get_width() - 10
                 mult_y = y + 15
                 win.blit(mult_surface, (mult_x, mult_y))
@@ -374,9 +380,10 @@ class Shop:
     def draw_tab_content(self, win, offset_x=0):
         current_items = self.get_current_tab_items()
         
-        card_width = 350
+        available_width = 800 - 100  
+        card_width = min(350, (available_width - 25) // 2)  
         card_height = 110
-        margin_x = 25
+        margin_x = (available_width - (card_width * 2)) // 3 
         margin_y = 20
         start_y = 140
         
@@ -394,32 +401,44 @@ class Shop:
     def draw(self, win):
         self.update()
         
-        win.fill(UI_BACKGROUND)
+        colors = get_colors()
+        
+        win.fill(colors["UI_BACKGROUND"])
         
         header_height = 120
-        pygame.draw.rect(win, WHITE, (0, 0, 800, header_height))
-        pygame.draw.line(win, UI_BORDER, (0, header_height), (800, header_height), 2)
+        pygame.draw.rect(win, colors["WHITE"], (0, 0, 800, header_height))
+        pygame.draw.line(win, colors["UI_BORDER"], (0, header_height), (800, header_height), 2)
         
-        title = self.title_font.render("UPGRADE SHOP", True, UI_TEXT)
+        title = self.title_font.render("UPGRADE SHOP", True, colors["UI_TEXT"])
         win.blit(title, (50, 25))
         
         coins_text = f"Coins: {self.format_number(self.save_system.data['coins'])}"
         score_text = f"High Score: {self.format_number(self.save_system.data['high_score'])}"
         
-        coins_surface = self.font.render(coins_text, True, UI_ACCENT)
-        score_surface = self.small_font.render(score_text, True, UI_TEXT)
+        coins_surface = self.font.render(coins_text, True, colors["UI_ACCENT"])
+        score_surface = self.small_font.render(score_text, True, colors["UI_TEXT"])
+        
+        max_text_width = 250
+        if coins_surface.get_width() > max_text_width:
+            coins_surface = self.small_font.render(coins_text, True, colors["UI_ACCENT"])
+        if score_surface.get_width() > max_text_width:
+            score_surface = self.tiny_font.render(score_text, True, colors["UI_TEXT"])
         
         win.blit(coins_surface, (800 - coins_surface.get_width() - 50, 25))
         win.blit(score_surface, (800 - score_surface.get_width() - 50, 55))
         
         if self.total_tabs > 1:
             tab_text = f"Tab {self.current_tab + 1} of {self.total_tabs}"
-            tab_surface = self.small_font.render(tab_text, True, GRAY)
+            tab_surface = self.small_font.render(tab_text, True, colors["GRAY"])
             tab_x = 400 - tab_surface.get_width() // 2
             win.blit(tab_surface, (tab_x, 65))
         
-        instructions = "Arrow Keys Navigate • SPACE Purchase • M/ESC Menu"
-        inst_surface = self.small_font.render(instructions, True, GRAY)
+        instructions = "Arrow Keys Navigate • SPACE Purchase • M/ESC Menu • Mouse Wheel Scroll"
+        inst_surface = self.small_font.render(instructions, True, colors["GRAY"])
+        
+        if inst_surface.get_width() > 700:
+            inst_surface = self.tiny_font.render(instructions, True, colors["GRAY"])
+        
         win.blit(inst_surface, (50, 85))
         
         if self.transitioning:

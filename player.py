@@ -1,11 +1,12 @@
 import pygame
 import random
-from constants import VERY_DARK, DARK_GRAY, GROUND_Y, BLOCK_SIZE, DINO_FRAMES, DINO, SHIELD_PATTERNS
+from constants import GROUND_Y, BLOCK_SIZE, DINO_FRAMES, DINO, SHIELD_PATTERNS, get_color
 from utils import draw_pixel_art
 
 
 class Player:
-    def __init__(self, upgrades):
+    def __init__(self, upgrades, settings_system=None):
+        self.settings_system = settings_system
         self.x = 100
         self.y = GROUND_Y - len(DINO_FRAMES[0]) * BLOCK_SIZE
         self.vel_y = 0
@@ -34,6 +35,8 @@ class Player:
         self.prev_s = False
         self.prev_d = False
         
+        self.prev_keys = {}
+        
         self.max_health = 1 + upgrades["bonus_health"]
         self.current_health = self.max_health
         self.invulnerable_timer = 0
@@ -50,30 +53,62 @@ class Player:
         self.max_shield_cooldown = base_cooldown - (shield_level * 150)
         self.max_shield_cooldown = max(600, self.max_shield_cooldown)
 
-    def handle_input(self, keys, upgrades):
-        space_pressed = keys[pygame.K_SPACE] and not self.prev_space
-        s_pressed = keys[pygame.K_s] and not self.prev_s
-        d_pressed = keys[pygame.K_d] and not self.prev_d
+    def get_keybind(self, action):
+        if self.settings_system:
+            return self.settings_system.get_keybind(action)
+        else:
+            defaults = {
+                "jump": pygame.K_SPACE,
+                "shield": pygame.K_s,
+                "dash": pygame.K_d
+            }
+            return defaults.get(action, pygame.K_UNKNOWN)
+
+    def is_key_pressed(self, keys, action):
+        key = self.get_keybind(action)
+        if key == pygame.K_UNKNOWN:
+            return False
         
-        if space_pressed and self.on_ground:
+        current_pressed = keys[key]
+        prev_pressed = self.prev_keys.get(key, False)
+        
+        return current_pressed and not prev_pressed
+
+    def handle_input(self, keys, upgrades):
+        if self.settings_system:
+            jump_pressed = self.is_key_pressed(keys, "jump")
+            shield_pressed = self.is_key_pressed(keys, "shield")
+            dash_pressed = self.is_key_pressed(keys, "dash")
+        else:
+            jump_pressed = keys[pygame.K_SPACE] and not self.prev_space
+            shield_pressed = keys[pygame.K_s] and not self.prev_s
+            dash_pressed = keys[pygame.K_d] and not self.prev_d
+        
+        if jump_pressed and self.on_ground:
             self.jump()
         
-        elif (space_pressed and not self.on_ground and 
+        elif (jump_pressed and not self.on_ground and 
               not self.air_jump_used and upgrades["air_jump"] > 0):
             self.air_jump()
             
-        if (s_pressed and upgrades["shield"] > 0 and 
+        if (shield_pressed and upgrades["shield"] > 0 and 
             self.shield_cooldown == 0 and not self.shield_active):
             self.activate_shield()
             
-        if (d_pressed and not self.on_ground and 
+        if (dash_pressed and not self.on_ground and 
             not self.air_dash_used and upgrades["air_dash"] > 0 and
             self.dash_cooldown == 0):
             self.air_dash(upgrades)
-            
-        self.prev_space = keys[pygame.K_SPACE]
-        self.prev_s = keys[pygame.K_s]
-        self.prev_d = keys[pygame.K_d]
+        
+        if self.settings_system:
+            for action in ["jump", "shield", "dash"]:
+                key = self.get_keybind(action)
+                if key != pygame.K_UNKNOWN:
+                    self.prev_keys[key] = keys[key]
+        else:
+            self.prev_space = keys[pygame.K_SPACE]
+            self.prev_s = keys[pygame.K_s]
+            self.prev_d = keys[pygame.K_d]
 
     def jump(self):
         self.vel_y = self.jump_force
@@ -230,13 +265,13 @@ class Player:
             dino_frame = DINO_FRAMES[self.anim_frame]
             
         if self.is_dashing():
-            draw_pixel_art(win, dino_frame, self.x, self.y, DARK_GRAY)
+            draw_pixel_art(win, dino_frame, self.x, self.y, get_color("DARK_GRAY"))
         else:
-            draw_pixel_art(win, dino_frame, self.x, self.y, VERY_DARK)
+            draw_pixel_art(win, dino_frame, self.x, self.y, get_color("VERY_DARK"))
         
         if self.shield_active:
             shield_stage = self.get_shield_stage()
             if shield_stage >= 0:
                 shield_x = self.x + 8
                 shield_y = self.y + 15
-                draw_pixel_art(win, SHIELD_PATTERNS[shield_stage], shield_x, shield_y, DARK_GRAY)
+                draw_pixel_art(win, SHIELD_PATTERNS[shield_stage], shield_x, shield_y, get_color("DARK_GRAY"))

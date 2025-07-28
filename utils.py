@@ -1,7 +1,10 @@
 import pygame
-from constants import VERY_DARK, BLOCK_SIZE
+from constants import BLOCK_SIZE, get_color
 
-def draw_pixel_art(win, pattern, top_left_x, top_left_y, color=VERY_DARK):
+def draw_pixel_art(win, pattern, top_left_x, top_left_y, color=None):
+    if color is None:
+        color = get_color("VERY_DARK")
+    
     for y, row in enumerate(pattern):
         for x, val in enumerate(row):
             if val == 1:

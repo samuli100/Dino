@@ -1,6 +1,6 @@
 import random
 import pygame
-from constants import WIDTH, GROUND_Y, BLOCK_SIZE, DARK_GRAY
+from constants import WIDTH, GROUND_Y, BLOCK_SIZE, get_color
 from utils import draw_pixel_art
 from constants import CACTUS_PATTERNS
 
@@ -47,7 +47,7 @@ class Cactus(Obstacle):
         return rect
 
     def draw(self, win):
-        draw_pixel_art(win, self.pattern, self.x, self.y, DARK_GRAY)
+        draw_pixel_art(win, self.pattern, self.x, self.y, get_color("DARK_GRAY"))
 
 class ObstacleManager:
     def __init__(self):

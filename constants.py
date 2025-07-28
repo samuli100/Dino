@@ -1,12 +1,10 @@
 import pygame
 
-# Display settings
 WIDTH, HEIGHT = 800, 400
 FPS = 60
 GROUND_Y = 350
-BLOCK_SIZE = 2  # Reduced for higher resolution
+BLOCK_SIZE = 2 # Resolution
 
-# Grayscale color palette
 WHITE = (255, 255, 255)
 LIGHT_GRAY = (220, 220, 220)
 MEDIUM_GRAY = (180, 180, 180)
@@ -15,24 +13,53 @@ DARK_GRAY = (80, 80, 80)
 BLACK = (40, 40, 40)
 VERY_DARK = (20, 20, 20)
 
-# UI Colors
 UI_BACKGROUND = (248, 248, 248)
 UI_BORDER = (200, 200, 200)
 UI_TEXT = (60, 60, 60)
 UI_ACCENT = (100, 100, 100)
 BUTTON_HOVER = (230, 230, 230)
 
-# Game States
 MENU = 0
 GAME = 1
 SHOP = 2
-GAME_OVER = 3
+SETTINGS = 3
+GAME_OVER = 4
 
-# Save file
 SAVE_FILE = "dino_save.json"
+SETTINGS_FILE = "dino_settings.json"
 
+_color_manager = None
 
-# High-resolution Dino animation frames (doubled resolution)
+def set_color_manager(color_manager):
+    global _color_manager
+    _color_manager = color_manager
+
+def get_colors():
+    if _color_manager:
+        return _color_manager.get_colors()
+    else:
+        return {
+            "WHITE": WHITE,
+            "LIGHT_GRAY": LIGHT_GRAY,
+            "MEDIUM_GRAY": MEDIUM_GRAY,
+            "GRAY": GRAY,
+            "DARK_GRAY": DARK_GRAY,
+            "BLACK": BLACK,
+            "VERY_DARK": VERY_DARK,
+            "UI_BACKGROUND": UI_BACKGROUND,
+            "UI_BORDER": UI_BORDER,
+            "UI_TEXT": UI_TEXT,
+            "UI_ACCENT": UI_ACCENT,
+            "BUTTON_HOVER": BUTTON_HOVER
+        }
+
+def get_color(color_name):
+    if _color_manager:
+        return _color_manager.get_color(color_name)
+    else:
+        return globals().get(color_name, (255, 255, 255))
+
+# Dino 
 DINO = [
     [
         # Frame 0 - Standing
@@ -119,7 +146,7 @@ DINO_FRAMES = [
     ]
 ]
 
-# High-resolution cactus patterns
+# Obstacle
 CACTUS_PATTERNS = [
     [  # Frame 0 - Single small cactus
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -244,7 +271,7 @@ CACTUS_PATTERNS = [
 ]
 
 
-# Shield icon patterns (intact, cracked, very cracked)
+# Shield icon 
 SHIELD_PATTERNS = [
     # Intact shield
     [
@@ -299,7 +326,7 @@ SHIELD_PATTERNS = [
     ]
 ]
 
-# Cloud patterns for background
+# background top
 CLOUD_PATTERNS = [
     # Small cloud
     [
@@ -394,7 +421,7 @@ CLOUD_PATTERNS = [
     ]
 ]
 
-# Mountain patterns for background
+# background bottom
 MOUNTAIN_PATTERNS = [
     # Small mountain
     [
