@@ -230,7 +230,6 @@ class Player:
 
     def update_dash(self, obstacle_speed=6):
         """Update air dash and return to start position"""
-        # Ensure attributes exist (backward compatibility)
         if not hasattr(self, 'returning_to_start'):
             self.returning_to_start = False
         if not hasattr(self, 'start_x'):
