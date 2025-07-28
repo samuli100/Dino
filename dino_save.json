@@ -1,0 +1,11 @@
+{
+  "coins": 4324,
+  "high_score": 7789,
+  "upgrades": {
+    "jump_boost": 0,
+    "coin_multiplier": 10,
+    "speed_boost": 0,
+    "shield": 1,
+    "slow_motion": 0
+  }
+}

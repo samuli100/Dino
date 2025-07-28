@@ -12,6 +12,18 @@
       ],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Run Pixel Art Editor",
+      "type": "pwa-node",
+      "request": "launch",
+      "runtimeExecutable": "py",
+      "args": [
+        "-3.12",
+        "pixelart.py"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}"
     }
   ]
 }
